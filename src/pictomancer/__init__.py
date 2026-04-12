@@ -1,24 +1,7 @@
-"""Pictomancer.ai Python SDK — image processing for AI agents."""
+"""Pictomancer.ai Python SDK — REST client for api.pictomancer.ai."""
 
-from pictomancer.client import Pictomancer, PictomancerError
-from pictomancer.models import (
-    AnalyzeResult,
-    CompressParams,
-    ConvertParams,
-    CropParams,
-    FormatSpec,
-    PipelineOp,
-    ResizeParams,
-)
+from .client import AsyncClient, Client
 
-__all__ = [
-    "Pictomancer",
-    "PictomancerError",
-    "AnalyzeResult",
-    "CompressParams",
-    "ConvertParams",
-    "CropParams",
-    "FormatSpec",
-    "PipelineOp",
-    "ResizeParams",
-]
+__version__ = "0.1.0"
+
+__all__ = ["AsyncClient", "Client", "__version__"]

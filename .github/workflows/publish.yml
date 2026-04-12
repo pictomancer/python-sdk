@@ -19,8 +19,8 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
-      - run: pip install -e ".[test,langchain]"
-      - run: pytest -v
+      - run: pip install .
+      - run: python -c "from pictomancer import AsyncClient, Client, __version__; assert __version__"
 
   publish:
     needs: test

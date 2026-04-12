@@ -1,161 +1,163 @@
-"""Async client for the Pictomancer.ai image processing API."""
-
-from __future__ import annotations
-
-from typing import Sequence
+"""Pictomancer.ai Python SDK."""
 
 import httpx
 
-from pictomancer.models import (
-    AnalyzeResult,
-    CompressParams,
-    ConvertParams,
-    CropParams,
-    FormatSpec,
-    PipelineOp,
-    ResizeParams,
-)
-
-_DEFAULT_BASE = "https://api.pictomancer.ai"
-_DEFAULT_TIMEOUT = 30.0
+DEFAULT_BASE_URL = "https://api.pictomancer.ai"
 
 
-class PictomancerError(Exception):
-    """Raised when the API returns a non-2xx status."""
+class Client:
+    """Synchronous Pictomancer client."""
 
-    def __init__(self, status: int, detail: str) -> None:
-        self.status = status
-        self.detail = detail
-        super().__init__(f"HTTP {status}: {detail}")
+    def __init__(self, api_key: str | None = None, base_url: str = DEFAULT_BASE_URL, timeout: float = 30.0):
+        headers = {}
+        if api_key:
+            headers["Authorization"] = f"Bearer {api_key}"
+        self._client = httpx.Client(base_url=base_url, headers=headers, timeout=timeout)
 
+    def close(self):
+        self._client.close()
 
-class Pictomancer:
-    """Thin async client for api.pictomancer.ai.
-
-    Usage::
-
-        async with Pictomancer() as p:
-            info = await p.analyze("https://example.com/photo.jpg")
-            data = await p.resize("https://example.com/photo.jpg", scale=0.5)
-    """
-
-    def __init__(
-        self,
-        *,
-        base_url: str = _DEFAULT_BASE,
-        timeout: float = _DEFAULT_TIMEOUT,
-        wallet: str | None = None,
-        http_client: httpx.AsyncClient | None = None,
-    ) -> None:
-        headers: dict[str, str] = {}
-        if wallet:
-            headers["X-Agent-Wallet"] = wallet
-        self._owns_client = http_client is None
-        self._client = http_client or httpx.AsyncClient(
-            base_url=base_url,
-            timeout=timeout,
-            headers=headers,
-        )
-
-    async def __aenter__(self) -> Pictomancer:
+    def __enter__(self):
         return self
 
-    async def __aexit__(self, *exc: object) -> None:
+    def __exit__(self, *args):
+        self.close()
+
+    def info(self) -> dict:
+        resp = self._client.get("/v1/info")
+        resp.raise_for_status()
+        return resp.json()
+
+    def usage(self) -> dict:
+        resp = self._client.get("/v1/usage")
+        resp.raise_for_status()
+        return resp.json()
+
+    def analyze(self, source: str) -> dict:
+        resp = self._client.post("/v1/analyze", json={"source": source})
+        resp.raise_for_status()
+        return resp.json()
+
+    def resize(self, source: str, *, scale: float | None = None, scale_x: float | None = None, scale_y: float | None = None, format: str | None = None, **kwargs) -> bytes:
+        body = {"source": source}
+        if scale is not None: body["scale"] = scale
+        if scale_x is not None: body["scale_x"] = scale_x
+        if scale_y is not None: body["scale_y"] = scale_y
+        if format: body["format"] = format
+        body.update(kwargs)
+        resp = self._client.post("/v1/resize", json=body)
+        resp.raise_for_status()
+        return resp.content
+
+    def compress(self, source: str, *, format: str | None = None, q: int | None = None, strip: bool | None = None, **kwargs) -> bytes:
+        body = {"source": source}
+        if format: body["format"] = format
+        if q is not None: body["q"] = q
+        if strip is not None: body["strip"] = strip
+        body.update(kwargs)
+        resp = self._client.post("/v1/compress", json=body)
+        resp.raise_for_status()
+        return resp.content
+
+    def convert(self, source: str, format: str, *, q: int | None = None, strip: bool | None = None, lossless: bool | None = None, **kwargs) -> bytes:
+        body = {"source": source, "format": format}
+        if q is not None: body["q"] = q
+        if strip is not None: body["strip"] = strip
+        if lossless is not None: body["lossless"] = lossless
+        body.update(kwargs)
+        resp = self._client.post("/v1/convert", json=body)
+        resp.raise_for_status()
+        return resp.content
+
+    def crop(self, source: str, x: int, y: int, width: int, height: int, *, format: str | None = None, **kwargs) -> bytes:
+        body = {"source": source, "x": x, "y": y, "width": width, "height": height}
+        if format: body["format"] = format
+        body.update(kwargs)
+        resp = self._client.post("/v1/crop", json=body)
+        resp.raise_for_status()
+        return resp.content
+
+    def pipeline(self, source: str, operations: list[dict]) -> bytes:
+        body = {"source": source, "operations": operations}
+        resp = self._client.post("/v1/pipeline", json=body)
+        resp.raise_for_status()
+        return resp.content
+
+
+class AsyncClient:
+    """Asynchronous Pictomancer client."""
+
+    def __init__(self, api_key: str | None = None, base_url: str = DEFAULT_BASE_URL, timeout: float = 30.0):
+        headers = {}
+        if api_key:
+            headers["Authorization"] = f"Bearer {api_key}"
+        self._client = httpx.AsyncClient(base_url=base_url, headers=headers, timeout=timeout)
+
+    async def close(self):
+        await self._client.aclose()
+
+    async def __aenter__(self):
+        return self
+
+    async def __aexit__(self, *args):
         await self.close()
 
-    async def close(self) -> None:
-        if self._owns_client:
-            await self._client.aclose()
-
-    def _raise(self, resp: httpx.Response) -> None:
-        if resp.is_success:
-            return
-        try:
-            detail = resp.json().get("detail", resp.text)
-        except Exception:
-            detail = resp.text
-        raise PictomancerError(resp.status_code, str(detail))
-
-    async def info(self) -> list[FormatSpec]:
-        """Return supported output formats and their options."""
+    async def info(self) -> dict:
         resp = await self._client.get("/v1/info")
-        self._raise(resp)
-        return [FormatSpec.model_validate(f) for f in resp.json()["formats"]]
+        resp.raise_for_status()
+        return resp.json()
 
-    async def analyze(self, source: str) -> AnalyzeResult:
+    async def usage(self) -> dict:
+        resp = await self._client.get("/v1/usage")
+        resp.raise_for_status()
+        return resp.json()
+
+    async def analyze(self, source: str) -> dict:
         resp = await self._client.post("/v1/analyze", json={"source": source})
-        self._raise(resp)
-        return AnalyzeResult.model_validate(resp.json())
+        resp.raise_for_status()
+        return resp.json()
 
-    async def resize(
-        self,
-        source: str,
-        *,
-        scale: float | None = None,
-        scale_x: float | None = None,
-        scale_y: float | None = None,
-        format: str | None = None,
-    ) -> bytes:
-        params = ResizeParams(scale=scale, scale_x=scale_x, scale_y=scale_y, format=format)
-        body = {"source": source, **params.model_dump(exclude_none=True)}
+    async def resize(self, source: str, *, scale: float | None = None, scale_x: float | None = None, scale_y: float | None = None, format: str | None = None, **kwargs) -> bytes:
+        body = {"source": source}
+        if scale is not None: body["scale"] = scale
+        if scale_x is not None: body["scale_x"] = scale_x
+        if scale_y is not None: body["scale_y"] = scale_y
+        if format: body["format"] = format
+        body.update(kwargs)
         resp = await self._client.post("/v1/resize", json=body)
-        self._raise(resp)
+        resp.raise_for_status()
         return resp.content
 
-    async def compress(
-        self,
-        source: str,
-        *,
-        q: int | None = None,
-        format: str | None = None,
-        strip: bool | None = None,
-    ) -> bytes:
-        params = CompressParams(q=q, format=format, strip=strip)
-        body = {"source": source, **params.model_dump(exclude_none=True)}
+    async def compress(self, source: str, *, format: str | None = None, q: int | None = None, strip: bool | None = None, **kwargs) -> bytes:
+        body = {"source": source}
+        if format: body["format"] = format
+        if q is not None: body["q"] = q
+        if strip is not None: body["strip"] = strip
+        body.update(kwargs)
         resp = await self._client.post("/v1/compress", json=body)
-        self._raise(resp)
+        resp.raise_for_status()
         return resp.content
 
-    async def convert(
-        self,
-        source: str,
-        *,
-        format: str,
-        q: int | None = None,
-        strip: bool | None = None,
-        lossless: bool | None = None,
-    ) -> bytes:
-        params = ConvertParams(format=format, q=q, strip=strip, lossless=lossless)
-        body = {"source": source, **params.model_dump(exclude_none=True)}
+    async def convert(self, source: str, format: str, *, q: int | None = None, strip: bool | None = None, lossless: bool | None = None, **kwargs) -> bytes:
+        body = {"source": source, "format": format}
+        if q is not None: body["q"] = q
+        if strip is not None: body["strip"] = strip
+        if lossless is not None: body["lossless"] = lossless
+        body.update(kwargs)
         resp = await self._client.post("/v1/convert", json=body)
-        self._raise(resp)
+        resp.raise_for_status()
         return resp.content
 
-    async def crop(
-        self,
-        source: str,
-        *,
-        x: int,
-        y: int,
-        width: int,
-        height: int,
-        format: str | None = None,
-    ) -> bytes:
-        params = CropParams(x=x, y=y, width=width, height=height, format=format)
-        body = {"source": source, **params.model_dump(exclude_none=True)}
+    async def crop(self, source: str, x: int, y: int, width: int, height: int, *, format: str | None = None, **kwargs) -> bytes:
+        body = {"source": source, "x": x, "y": y, "width": width, "height": height}
+        if format: body["format"] = format
+        body.update(kwargs)
         resp = await self._client.post("/v1/crop", json=body)
-        self._raise(resp)
+        resp.raise_for_status()
         return resp.content
 
-    async def pipeline(
-        self,
-        source: str,
-        operations: Sequence[PipelineOp],
-    ) -> bytes:
-        body = {
-            "source": source,
-            "operations": [op.model_dump() for op in operations],
-        }
+    async def pipeline(self, source: str, operations: list[dict]) -> bytes:
+        body = {"source": source, "operations": operations}
         resp = await self._client.post("/v1/pipeline", json=body)
-        self._raise(resp)
+        resp.raise_for_status()
         return resp.content
