@@ -99,6 +99,25 @@ with Client(api_key="your-api-key") as client:
 e.g. `Content-Type`, `Cache-Control`, `x-amz-*`). The returned `sha256` is the
 digest of exactly the bytes delivered, so you can verify the stored object.
 
+### Authenticating a callback
+
+Pass `secret=` to `Callback` to have the POST body signed. We send
+`X-Pig-Signature: sha256=<hex>` (HMAC-SHA256 of the body, GitHub-webhook style).
+The secret is used per request and never stored. Verify it on your endpoint:
+
+```python
+res = client.resize(
+    "https://example.com/image.jpg",
+    scale=0.5,
+    delivery=Callback("https://hooks.example.com/pig", secret="shared-secret"),
+)
+
+# On your endpoint (any framework), recompute and constant-time compare:
+import hashlib, hmac
+expected = "sha256=" + hmac.new(b"shared-secret", request_body, hashlib.sha256).hexdigest()
+assert hmac.compare_digest(expected, request.headers["X-Pig-Signature"])
+```
+
 Errors use httpx behavior: non-2xx responses raise `httpx.HTTPStatusError` after `raise_for_status()`.
 
 ## API documentation

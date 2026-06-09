@@ -22,16 +22,23 @@ def PutUrl(url: str, *, headers: dict | None = None) -> dict:
     return target
 
 
-def Callback(url: str, *, headers: dict | None = None) -> dict:
+def Callback(url: str, *, headers: dict | None = None, secret: str | None = None) -> dict:
     """Delivery via POST to a customer callback endpoint (async/large jobs).
 
     The bytes are POSTed to `url` with an X-Pig-Sha256 integrity header; the op
     returns a JSON dict (status, sha256, bytes_sent, ...). Secure the endpoint
     with a token in the URL — no credentials are stored on our side.
+
+    Pass `secret` to have the body signed with HMAC-SHA256: we send
+    `X-Pig-Signature: sha256=<hex>`, which you recompute on your endpoint with
+    the same secret (constant-time compare) to authenticate the callback. The
+    secret is used per request and never stored.
     """
     target: dict = {"mode": "callback_url", "callback_url": url}
     if headers:
         target["headers"] = headers
+    if secret:
+        target["secret"] = secret
     return target
 
 

@@ -29,6 +29,15 @@ class TestDeliveryHelpers:
     def test_callback(self):
         assert Callback(CALLBACK_URL) == {"mode": "callback_url", "callback_url": CALLBACK_URL}
 
+    def test_callback_with_secret(self):
+        out = Callback(CALLBACK_URL, secret="s3cr3t")
+
+        assert out == {
+            "mode": "callback_url",
+            "callback_url": CALLBACK_URL,
+            "secret": "s3cr3t",
+        }
+
 
 class TestInlineReturnsBytes:
     @respx.mock
