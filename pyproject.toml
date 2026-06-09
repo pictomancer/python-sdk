@@ -9,6 +9,12 @@ readme = "README.md"
 requires-python = ">=3.10"
 dependencies = ["httpx>=0.28"]
 
+[project.optional-dependencies]
+test = ["pytest>=8", "pytest-asyncio>=0.24", "respx>=0.21"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+
 [tool.hatch.build.targets.wheel]
 packages = ["src/pictomancer"]
 
