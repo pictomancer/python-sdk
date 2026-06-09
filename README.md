@@ -68,6 +68,37 @@ async def main():
 asyncio.run(main())
 ```
 
+## Delivery: write the result somewhere else
+
+By default an operation returns the optimized `bytes`. Pass a `delivery` target to
+have Pictomancer write the result directly to your storage or endpoint instead —
+the operation then returns a `dict` (etag, sha256, bytes written, ...). No cloud
+credentials ever reach Pictomancer.
+
+```python
+from pictomancer import Client, PutUrl, Callback
+
+with Client(api_key="your-api-key") as client:
+    # Upload to a customer-signed presigned PUT URL (S3/R2/GCS/Azure).
+    res = client.resize(
+        "https://example.com/image.jpg",
+        scale=0.5,
+        delivery=PutUrl("https://bucket.s3.amazonaws.com/key?X-Amz-Signature=..."),
+    )
+    print(res["sha256"], res["bytes_written"])
+
+    # Or POST the bytes to your own callback endpoint (async/large jobs).
+    res = client.compress(
+        "https://example.com/image.jpg",
+        delivery=Callback("https://hooks.example.com/pig?token=secret"),
+    )
+    print(res["status"], res["sha256"])
+```
+
+`PutUrl` and `Callback` accept optional `headers=` (whitelisted storage headers,
+e.g. `Content-Type`, `Cache-Control`, `x-amz-*`). The returned `sha256` is the
+digest of exactly the bytes delivered, so you can verify the stored object.
+
 Errors use httpx behavior: non-2xx responses raise `httpx.HTTPStatusError` after `raise_for_status()`.
 
 ## API documentation
