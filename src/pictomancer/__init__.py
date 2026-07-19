@@ -2,7 +2,7 @@
 
 from .client import AsyncClient, Callback, Client, Inline, PutUrl
 
-__version__ = "0.1.0"
+__version__ = "0.2.0"
 
 __all__ = [
     "AsyncClient",
