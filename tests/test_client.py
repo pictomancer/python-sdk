@@ -1,8 +1,18 @@
+import base64
+
 import httpx
 import pytest
 import respx
 
-from pictomancer import AsyncClient, Callback, Client, Inline, PutUrl
+from pictomancer import (
+    AsyncClient,
+    Callback,
+    Client,
+    Inline,
+    PutUrl,
+    source_from_bytes,
+    source_from_path,
+)
 
 BASE = "https://api.pictomancer.ai"
 PNG = b"\x89PNG\r\n\x1a\n"
@@ -117,3 +127,26 @@ class TestErrorPropagation:
         with Client(api_key="k") as c:
             with pytest.raises(httpx.HTTPStatusError):
                 c.resize("data:image/png;base64,xxx", scale=0.5)
+
+
+class TestSourceHelpers:
+    def test_source_from_bytes_returns_base64(self):
+        out = source_from_bytes(PNG)
+
+        assert out == base64.b64encode(PNG).decode()
+
+    def test_source_from_path_reads_and_encodes(self, tmp_path):
+        path = tmp_path / "image.png"
+        path.write_bytes(PNG)
+
+        out = source_from_path(path)
+
+        assert out == base64.b64encode(PNG).decode()
+
+    def test_source_from_path_accepts_str(self, tmp_path):
+        path = tmp_path / "image.png"
+        path.write_bytes(PNG)
+
+        out = source_from_path(str(path))
+
+        assert out == base64.b64encode(PNG).decode()

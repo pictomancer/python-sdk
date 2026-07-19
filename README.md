@@ -14,6 +14,20 @@ From PyPI (when published):
 pip install pictomancer
 ```
 
+## Sources
+
+Every operation takes a `source`: an image URL, a base64 string, or a `data:` URI. For local files or in-memory bytes use the helpers:
+
+```python
+from pictomancer import Client, source_from_bytes, source_from_path
+
+with Client() as client:
+    out = client.compress(source_from_path("photo.jpg"), q=80)
+
+    with open("photo.jpg", "rb") as f:
+        out = client.compress(source_from_bytes(f.read()), q=80)
+```
+
 ## Configuration
 
 - **`api_key`** — optional Bearer token (`Authorization: Bearer …`).

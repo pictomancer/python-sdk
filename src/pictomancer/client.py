@@ -1,8 +1,22 @@
 """Pictomancer.ai Python SDK."""
 
+import base64
+from os import PathLike
+from pathlib import Path
+
 import httpx
 
 DEFAULT_BASE_URL = "https://api.pictomancer.ai"
+
+
+def source_from_bytes(data: bytes) -> str:
+    """Base64 source for in-memory image bytes (the API accepts raw base64)."""
+    return base64.b64encode(data).decode()
+
+
+def source_from_path(path: str | PathLike) -> str:
+    """Base64 source for a local image file."""
+    return source_from_bytes(Path(path).read_bytes())
 
 
 def Inline() -> dict:
