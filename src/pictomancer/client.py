@@ -105,11 +105,12 @@ class Client:
         body.update(kwargs)
         return self._post("/v1/compress", body, delivery)
 
-    def convert(self, source: str, format: str, *, q: int | None = None, strip: bool | None = None, lossless: bool | None = None, delivery: dict | None = None, **kwargs) -> bytes | dict:
+    def convert(self, source: str, format: str, *, q: int | None = None, strip: bool | None = None, lossless: bool | None = None, effort: int | None = None, delivery: dict | None = None, **kwargs) -> bytes | dict:
         body: dict = {"source": source, "format": format}
         if q is not None: body["q"] = q
         if strip is not None: body["strip"] = strip
         if lossless is not None: body["lossless"] = lossless
+        if effort is not None: body["effort"] = effort
         body.update(kwargs)
         return self._post("/v1/convert", body, delivery)
 
@@ -179,11 +180,12 @@ class AsyncClient:
         body.update(kwargs)
         return await self._post("/v1/compress", body, delivery)
 
-    async def convert(self, source: str, format: str, *, q: int | None = None, strip: bool | None = None, lossless: bool | None = None, delivery: dict | None = None, **kwargs) -> bytes | dict:
+    async def convert(self, source: str, format: str, *, q: int | None = None, strip: bool | None = None, lossless: bool | None = None, effort: int | None = None, delivery: dict | None = None, **kwargs) -> bytes | dict:
         body: dict = {"source": source, "format": format}
         if q is not None: body["q"] = q
         if strip is not None: body["strip"] = strip
         if lossless is not None: body["lossless"] = lossless
+        if effort is not None: body["effort"] = effort
         body.update(kwargs)
         return await self._post("/v1/convert", body, delivery)
 

@@ -94,6 +94,21 @@ class TestPutUrlReturnsJson:
         assert out["status"] == 202
 
 
+class TestConvertParams:
+    @respx.mock
+    def test_convert_avif_sends_effort(self):
+        route = respx.post(f"{BASE}/v1/convert").mock(
+            return_value=httpx.Response(200, headers={"content-type": "image/avif"}, content=PNG)
+        )
+
+        with Client(api_key="k") as c:
+            c.convert("data:image/png;base64,xxx", "avif", q=50, effort=2)
+
+        sent = route.calls[0].request
+        assert b'"format": "avif"' in sent.content or b'"format":"avif"' in sent.content
+        assert b'"effort"' in sent.content
+
+
 class TestErrorPropagation:
     @respx.mock
     def test_4xx_raises(self):
