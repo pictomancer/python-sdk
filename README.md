@@ -82,6 +82,36 @@ async def main():
 asyncio.run(main())
 ```
 
+## Quality target (SSIM)
+
+Instead of guessing a `q` value, ask for the smallest file that still scores at
+least a given SSIM. Pass `quality_target` (float, 0 < v <= 1) to `compress` or
+`convert`; the server binary-searches the encoder quality for you.
+
+```python
+with Client(api_key="your-api-key") as client:
+    out = client.compress("https://example.com/image.jpg", format="webp", quality_target=0.95)
+    out = client.convert("https://example.com/image.jpg", "avif", quality_target=0.9)
+```
+
+Constraints (validated server-side, violations return 422):
+
+- Mutually exclusive with `q`, and with `lossless=True` on `convert`.
+- Only for `jpeg`, `webp` and `avif` outputs; `compress` requires an explicit `format`.
+- Not supported inside `pipeline` operations.
+- Carries a flat surcharge for the extra encodes.
+
+The search outcome is reported in response headers (the SDK returns the body
+only; inspect them with your own httpx client or event hooks if you need them):
+
+- `X-Pictomancer-Quality-Target` - the target you asked for.
+- `X-Pictomancer-Quality-Achieved` - SSIM of the returned encode, e.g. `0.9530`.
+- `X-Pictomancer-Quality-Q-Final` - encoder quality the search settled on.
+- `X-Pictomancer-Quality-Encodes` - encode cycles spent.
+
+Headers are absent when no search ran. `X-Pig-Billed` is `0` when the input came
+back untouched (already within target at its current size).
+
 ## Delivery: write the result somewhere else
 
 By default an operation returns the optimized `bytes`. Pass a `delivery` target to

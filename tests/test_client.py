@@ -1,4 +1,5 @@
 import base64
+import json
 
 import httpx
 import pytest
@@ -117,6 +118,57 @@ class TestConvertParams:
         sent = route.calls[0].request
         assert b'"format": "avif"' in sent.content or b'"format":"avif"' in sent.content
         assert b'"effort"' in sent.content
+
+
+class TestQualityTargetParams:
+    @respx.mock
+    def test_compress_sends_quality_target(self):
+        route = respx.post(f"{BASE}/v1/compress").mock(
+            return_value=httpx.Response(200, headers={"content-type": "image/webp"}, content=PNG)
+        )
+
+        with Client(api_key="k") as c:
+            c.compress("data:image/png;base64,xxx", format="webp", quality_target=0.95)
+
+        sent = json.loads(route.calls[0].request.content)
+        assert sent["quality_target"] == 0.95
+
+    @respx.mock
+    def test_convert_sends_quality_target(self):
+        route = respx.post(f"{BASE}/v1/convert").mock(
+            return_value=httpx.Response(200, headers={"content-type": "image/avif"}, content=PNG)
+        )
+
+        with Client(api_key="k") as c:
+            c.convert("data:image/png;base64,xxx", "avif", quality_target=0.9)
+
+        sent = json.loads(route.calls[0].request.content)
+        assert sent["quality_target"] == 0.9
+
+    @respx.mock
+    def test_compress_omits_quality_target_by_default(self):
+        route = respx.post(f"{BASE}/v1/compress").mock(
+            return_value=httpx.Response(200, headers={"content-type": "image/webp"}, content=PNG)
+        )
+
+        with Client(api_key="k") as c:
+            c.compress("data:image/png;base64,xxx", format="webp", q=80)
+
+        sent = json.loads(route.calls[0].request.content)
+        assert "quality_target" not in sent
+
+    @respx.mock
+    @pytest.mark.asyncio
+    async def test_async_convert_sends_quality_target(self):
+        route = respx.post(f"{BASE}/v1/convert").mock(
+            return_value=httpx.Response(200, headers={"content-type": "image/webp"}, content=PNG)
+        )
+
+        async with AsyncClient(api_key="k") as c:
+            await c.convert("data:image/png;base64,xxx", "webp", quality_target=0.95)
+
+        sent = json.loads(route.calls[0].request.content)
+        assert sent["quality_target"] == 0.95
 
 
 class TestErrorPropagation:
