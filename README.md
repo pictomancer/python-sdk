@@ -82,6 +82,35 @@ async def main():
 asyncio.run(main())
 ```
 
+## Geometry ops: smart crop, trim, fill, autorot
+
+`crop` has three mutually exclusive modes:
+
+```python
+with Client(api_key="your-api-key") as client:
+    # Manual: exact rectangle.
+    out = client.crop("https://example.com/image.jpg", 0, 0, 100, 100)
+
+    # Smart: gravity picks the window. One of 'attention', 'entropy', 'centre'.
+    out = client.crop("https://example.com/image.jpg", gravity="attention", width=200, height=200)
+
+    # Trim: removes a uniform background border. threshold defaults to 10.0 server-side.
+    out = client.crop("https://example.com/image.jpg", trim=True, threshold=5.0)
+```
+
+`resize` gains a fill mode: pass `width` + `height` (instead of `scale`/`scale_x`/`scale_y`) to
+resize and smart-crop to exact dimensions in one call; `gravity` defaults to `attention`.
+
+```python
+out = client.resize("https://example.com/image.jpg", width=200, height=150, gravity="entropy")
+```
+
+All four ops (`resize`, `compress`, `convert`, `crop`) accept `autorot=True` to apply EXIF
+orientation before processing.
+
+When a crop actually trims, the response carries `X-Pictomancer-Trim-Left/-Top/-Width/-Height`
+headers (inspect them with your own httpx client or event hooks).
+
 ## Quality target (SSIM)
 
 Instead of guessing a `q` value, ask for the smallest file that still scores at
