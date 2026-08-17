@@ -146,6 +146,16 @@ class Client:
         body.update(kwargs)
         return self._post("/v1/convert", body, delivery)
 
+    def optimize_generated(self, source: str, *, format: str | None = None, q: int | None = None, quality_target: float | None = None, max_dimension: int | None = None, strip: bool | None = None, delivery: dict | None = None, **kwargs) -> bytes | dict:
+        body: dict = {"source": source}
+        if format is not None: body["format"] = format
+        if q is not None: body["q"] = q
+        if quality_target is not None: body["quality_target"] = quality_target
+        if max_dimension is not None: body["max_dimension"] = max_dimension
+        if strip is not None: body["strip"] = strip
+        body.update(kwargs)
+        return self._post("/v1/optimize_generated", body, delivery)
+
     def crop(self, source: str, x: int | None = None, y: int | None = None, width: int | None = None, height: int | None = None, *, format: str | None = None, gravity: str | None = None, trim: bool | None = None, threshold: float | None = None, autorot: bool | None = None, denoise: int | None = None, equalize: bool | None = None, sharpen: bool | None = None, delivery: dict | None = None, **kwargs) -> bytes | dict:
         """Three mutually exclusive modes: manual (x+y+width+height), smart (`gravity` one of 'attention', 'entropy', 'centre' + width+height), trim (`trim=True`, optional `threshold`, default 10.0 server-side). `autorot` is valid in all three. `denoise` (1-3), `equalize` and `sharpen` are valid in all three."""
         body: dict = {"source": source}
@@ -250,6 +260,16 @@ class AsyncClient:
         if sharpen is not None: body["sharpen"] = sharpen
         body.update(kwargs)
         return await self._post("/v1/convert", body, delivery)
+
+    async def optimize_generated(self, source: str, *, format: str | None = None, q: int | None = None, quality_target: float | None = None, max_dimension: int | None = None, strip: bool | None = None, delivery: dict | None = None, **kwargs) -> bytes | dict:
+        body: dict = {"source": source}
+        if format is not None: body["format"] = format
+        if q is not None: body["q"] = q
+        if quality_target is not None: body["quality_target"] = quality_target
+        if max_dimension is not None: body["max_dimension"] = max_dimension
+        if strip is not None: body["strip"] = strip
+        body.update(kwargs)
+        return await self._post("/v1/optimize_generated", body, delivery)
 
     async def crop(self, source: str, x: int | None = None, y: int | None = None, width: int | None = None, height: int | None = None, *, format: str | None = None, gravity: str | None = None, trim: bool | None = None, threshold: float | None = None, autorot: bool | None = None, denoise: int | None = None, equalize: bool | None = None, sharpen: bool | None = None, delivery: dict | None = None, **kwargs) -> bytes | dict:
         """Three mutually exclusive modes: manual (x+y+width+height), smart (`gravity` one of 'attention', 'entropy', 'centre' + width+height), trim (`trim=True`, optional `threshold`, default 10.0 server-side). `autorot` is valid in all three. `denoise` (1-3), `equalize` and `sharpen` are valid in all three."""

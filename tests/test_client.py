@@ -493,6 +493,52 @@ class TestEnhanceParams:
         assert sent["sharpen"] is True
 
 
+class TestOptimizeGenerated:
+    @respx.mock
+    def test_sends_only_source_by_default(self):
+        route = respx.post(f"{BASE}/v1/optimize_generated").mock(
+            return_value=httpx.Response(200, headers={"content-type": "image/webp"}, content=PNG)
+        )
+
+        with Client(api_key="k") as c:
+            c.optimize_generated("data:image/png;base64,xxx")
+
+        sent = json.loads(route.calls[0].request.content)
+        assert sent == {"source": "data:image/png;base64,xxx"}
+
+    @respx.mock
+    def test_forwards_format_max_dimension_and_quality_target(self):
+        route = respx.post(f"{BASE}/v1/optimize_generated").mock(
+            return_value=httpx.Response(200, headers={"content-type": "image/avif"}, content=PNG)
+        )
+
+        with Client(api_key="k") as c:
+            c.optimize_generated(
+                "data:image/png;base64,xxx",
+                format="avif",
+                max_dimension=1600,
+                quality_target=0.95,
+            )
+
+        sent = json.loads(route.calls[0].request.content)
+        assert sent["format"] == "avif"
+        assert sent["max_dimension"] == 1600
+        assert sent["quality_target"] == 0.95
+
+    @respx.mock
+    @pytest.mark.asyncio
+    async def test_async_sends_only_source_by_default(self):
+        route = respx.post(f"{BASE}/v1/optimize_generated").mock(
+            return_value=httpx.Response(200, headers={"content-type": "image/webp"}, content=PNG)
+        )
+
+        async with AsyncClient(api_key="k") as c:
+            await c.optimize_generated("data:image/png;base64,xxx")
+
+        sent = json.loads(route.calls[0].request.content)
+        assert sent == {"source": "data:image/png;base64,xxx"}
+
+
 class TestErrorPropagation:
     @respx.mock
     def test_4xx_raises(self):

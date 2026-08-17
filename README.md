@@ -160,6 +160,19 @@ only; inspect them with your own httpx client or event hooks if you need them):
 Headers are absent when no search ran. `X-Pig-Billed` is `0` when the input came
 back untouched (already within target at its current size).
 
+## AI-generated images: one call to web-ready
+
+Image generators (gpt-image, DALL-E, Flux, Midjourney, Stable Diffusion) return 2-8 MB
+PNGs. optimize_generated returns the same picture as web-ready webp (default), avif,
+jpeg or png: metadata stripped, transparency kept, optional max_dimension cap (never
+upscales), optional q or quality_target. Same price as convert; a result that is not
+smaller is returned free.
+
+```python
+with Client(api_key="your-api-key") as client:
+    out = client.optimize_generated("https://example.com/gen.png", format="avif", max_dimension=1600)
+```
+
 ## Delivery: write the result somewhere else
 
 By default an operation returns the optimized `bytes`. Pass a `delivery` target to
