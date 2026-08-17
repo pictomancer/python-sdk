@@ -102,7 +102,7 @@ class Client:
         resp.raise_for_status()
         return resp.json()
 
-    def resize(self, source: str, *, scale: float | None = None, scale_x: float | None = None, scale_y: float | None = None, format: str | None = None, width: int | None = None, height: int | None = None, gravity: str | None = None, autorot: bool | None = None, delivery: dict | None = None, **kwargs) -> bytes | dict:
+    def resize(self, source: str, *, scale: float | None = None, scale_x: float | None = None, scale_y: float | None = None, format: str | None = None, width: int | None = None, height: int | None = None, gravity: str | None = None, autorot: bool | None = None, denoise: int | None = None, equalize: bool | None = None, sharpen: bool | None = None, delivery: dict | None = None, **kwargs) -> bytes | dict:
         """Fill mode: pass `width` + `height` (optionally `gravity`, default `attention`) instead of scale/scale_x/scale_y to resize and smart-crop to exact dimensions in one call. `gravity` is one of 'attention', 'entropy', 'centre'."""
         body: dict = {"source": source}
         if scale is not None: body["scale"] = scale
@@ -113,20 +113,26 @@ class Client:
         if height is not None: body["height"] = height
         if gravity: body["gravity"] = gravity
         if autorot is not None: body["autorot"] = autorot
+        if denoise is not None: body["denoise"] = denoise
+        if equalize is not None: body["equalize"] = equalize
+        if sharpen is not None: body["sharpen"] = sharpen
         body.update(kwargs)
         return self._post("/v1/resize", body, delivery)
 
-    def compress(self, source: str, *, format: str | None = None, q: int | None = None, strip: bool | None = None, quality_target: float | None = None, autorot: bool | None = None, delivery: dict | None = None, **kwargs) -> bytes | dict:
+    def compress(self, source: str, *, format: str | None = None, q: int | None = None, strip: bool | None = None, quality_target: float | None = None, autorot: bool | None = None, denoise: int | None = None, equalize: bool | None = None, sharpen: bool | None = None, delivery: dict | None = None, **kwargs) -> bytes | dict:
         body: dict = {"source": source}
         if format: body["format"] = format
         if q is not None: body["q"] = q
         if strip is not None: body["strip"] = strip
         if quality_target is not None: body["quality_target"] = quality_target
         if autorot is not None: body["autorot"] = autorot
+        if denoise is not None: body["denoise"] = denoise
+        if equalize is not None: body["equalize"] = equalize
+        if sharpen is not None: body["sharpen"] = sharpen
         body.update(kwargs)
         return self._post("/v1/compress", body, delivery)
 
-    def convert(self, source: str, format: str, *, q: int | None = None, strip: bool | None = None, lossless: bool | None = None, effort: int | None = None, quality_target: float | None = None, autorot: bool | None = None, delivery: dict | None = None, **kwargs) -> bytes | dict:
+    def convert(self, source: str, format: str, *, q: int | None = None, strip: bool | None = None, lossless: bool | None = None, effort: int | None = None, quality_target: float | None = None, autorot: bool | None = None, denoise: int | None = None, equalize: bool | None = None, sharpen: bool | None = None, delivery: dict | None = None, **kwargs) -> bytes | dict:
         body: dict = {"source": source, "format": format}
         if q is not None: body["q"] = q
         if strip is not None: body["strip"] = strip
@@ -134,11 +140,14 @@ class Client:
         if effort is not None: body["effort"] = effort
         if quality_target is not None: body["quality_target"] = quality_target
         if autorot is not None: body["autorot"] = autorot
+        if denoise is not None: body["denoise"] = denoise
+        if equalize is not None: body["equalize"] = equalize
+        if sharpen is not None: body["sharpen"] = sharpen
         body.update(kwargs)
         return self._post("/v1/convert", body, delivery)
 
-    def crop(self, source: str, x: int | None = None, y: int | None = None, width: int | None = None, height: int | None = None, *, format: str | None = None, gravity: str | None = None, trim: bool | None = None, threshold: float | None = None, autorot: bool | None = None, delivery: dict | None = None, **kwargs) -> bytes | dict:
-        """Three mutually exclusive modes: manual (x+y+width+height), smart (`gravity` one of 'attention', 'entropy', 'centre' + width+height), trim (`trim=True`, optional `threshold`, default 10.0 server-side). `autorot` is valid in all three."""
+    def crop(self, source: str, x: int | None = None, y: int | None = None, width: int | None = None, height: int | None = None, *, format: str | None = None, gravity: str | None = None, trim: bool | None = None, threshold: float | None = None, autorot: bool | None = None, denoise: int | None = None, equalize: bool | None = None, sharpen: bool | None = None, delivery: dict | None = None, **kwargs) -> bytes | dict:
+        """Three mutually exclusive modes: manual (x+y+width+height), smart (`gravity` one of 'attention', 'entropy', 'centre' + width+height), trim (`trim=True`, optional `threshold`, default 10.0 server-side). `autorot` is valid in all three. `denoise` (1-3), `equalize` and `sharpen` are valid in all three."""
         body: dict = {"source": source}
         if x is not None: body["x"] = x
         if y is not None: body["y"] = y
@@ -149,6 +158,9 @@ class Client:
         if trim is not None: body["trim"] = trim
         if threshold is not None: body["threshold"] = threshold
         if autorot is not None: body["autorot"] = autorot
+        if denoise is not None: body["denoise"] = denoise
+        if equalize is not None: body["equalize"] = equalize
+        if sharpen is not None: body["sharpen"] = sharpen
         body.update(kwargs)
         return self._post("/v1/crop", body, delivery)
 
@@ -195,7 +207,7 @@ class AsyncClient:
         resp.raise_for_status()
         return resp.json()
 
-    async def resize(self, source: str, *, scale: float | None = None, scale_x: float | None = None, scale_y: float | None = None, format: str | None = None, width: int | None = None, height: int | None = None, gravity: str | None = None, autorot: bool | None = None, delivery: dict | None = None, **kwargs) -> bytes | dict:
+    async def resize(self, source: str, *, scale: float | None = None, scale_x: float | None = None, scale_y: float | None = None, format: str | None = None, width: int | None = None, height: int | None = None, gravity: str | None = None, autorot: bool | None = None, denoise: int | None = None, equalize: bool | None = None, sharpen: bool | None = None, delivery: dict | None = None, **kwargs) -> bytes | dict:
         """Fill mode: pass `width` + `height` (optionally `gravity`, default `attention`) instead of scale/scale_x/scale_y to resize and smart-crop to exact dimensions in one call. `gravity` is one of 'attention', 'entropy', 'centre'."""
         body: dict = {"source": source}
         if scale is not None: body["scale"] = scale
@@ -206,20 +218,26 @@ class AsyncClient:
         if height is not None: body["height"] = height
         if gravity: body["gravity"] = gravity
         if autorot is not None: body["autorot"] = autorot
+        if denoise is not None: body["denoise"] = denoise
+        if equalize is not None: body["equalize"] = equalize
+        if sharpen is not None: body["sharpen"] = sharpen
         body.update(kwargs)
         return await self._post("/v1/resize", body, delivery)
 
-    async def compress(self, source: str, *, format: str | None = None, q: int | None = None, strip: bool | None = None, quality_target: float | None = None, autorot: bool | None = None, delivery: dict | None = None, **kwargs) -> bytes | dict:
+    async def compress(self, source: str, *, format: str | None = None, q: int | None = None, strip: bool | None = None, quality_target: float | None = None, autorot: bool | None = None, denoise: int | None = None, equalize: bool | None = None, sharpen: bool | None = None, delivery: dict | None = None, **kwargs) -> bytes | dict:
         body: dict = {"source": source}
         if format: body["format"] = format
         if q is not None: body["q"] = q
         if strip is not None: body["strip"] = strip
         if quality_target is not None: body["quality_target"] = quality_target
         if autorot is not None: body["autorot"] = autorot
+        if denoise is not None: body["denoise"] = denoise
+        if equalize is not None: body["equalize"] = equalize
+        if sharpen is not None: body["sharpen"] = sharpen
         body.update(kwargs)
         return await self._post("/v1/compress", body, delivery)
 
-    async def convert(self, source: str, format: str, *, q: int | None = None, strip: bool | None = None, lossless: bool | None = None, effort: int | None = None, quality_target: float | None = None, autorot: bool | None = None, delivery: dict | None = None, **kwargs) -> bytes | dict:
+    async def convert(self, source: str, format: str, *, q: int | None = None, strip: bool | None = None, lossless: bool | None = None, effort: int | None = None, quality_target: float | None = None, autorot: bool | None = None, denoise: int | None = None, equalize: bool | None = None, sharpen: bool | None = None, delivery: dict | None = None, **kwargs) -> bytes | dict:
         body: dict = {"source": source, "format": format}
         if q is not None: body["q"] = q
         if strip is not None: body["strip"] = strip
@@ -227,11 +245,14 @@ class AsyncClient:
         if effort is not None: body["effort"] = effort
         if quality_target is not None: body["quality_target"] = quality_target
         if autorot is not None: body["autorot"] = autorot
+        if denoise is not None: body["denoise"] = denoise
+        if equalize is not None: body["equalize"] = equalize
+        if sharpen is not None: body["sharpen"] = sharpen
         body.update(kwargs)
         return await self._post("/v1/convert", body, delivery)
 
-    async def crop(self, source: str, x: int | None = None, y: int | None = None, width: int | None = None, height: int | None = None, *, format: str | None = None, gravity: str | None = None, trim: bool | None = None, threshold: float | None = None, autorot: bool | None = None, delivery: dict | None = None, **kwargs) -> bytes | dict:
-        """Three mutually exclusive modes: manual (x+y+width+height), smart (`gravity` one of 'attention', 'entropy', 'centre' + width+height), trim (`trim=True`, optional `threshold`, default 10.0 server-side). `autorot` is valid in all three."""
+    async def crop(self, source: str, x: int | None = None, y: int | None = None, width: int | None = None, height: int | None = None, *, format: str | None = None, gravity: str | None = None, trim: bool | None = None, threshold: float | None = None, autorot: bool | None = None, denoise: int | None = None, equalize: bool | None = None, sharpen: bool | None = None, delivery: dict | None = None, **kwargs) -> bytes | dict:
+        """Three mutually exclusive modes: manual (x+y+width+height), smart (`gravity` one of 'attention', 'entropy', 'centre' + width+height), trim (`trim=True`, optional `threshold`, default 10.0 server-side). `autorot` is valid in all three. `denoise` (1-3), `equalize` and `sharpen` are valid in all three."""
         body: dict = {"source": source}
         if x is not None: body["x"] = x
         if y is not None: body["y"] = y
@@ -242,6 +263,9 @@ class AsyncClient:
         if trim is not None: body["trim"] = trim
         if threshold is not None: body["threshold"] = threshold
         if autorot is not None: body["autorot"] = autorot
+        if denoise is not None: body["denoise"] = denoise
+        if equalize is not None: body["equalize"] = equalize
+        if sharpen is not None: body["sharpen"] = sharpen
         body.update(kwargs)
         return await self._post("/v1/crop", body, delivery)
 

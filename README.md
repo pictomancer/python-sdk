@@ -111,6 +111,25 @@ orientation before processing.
 When a crop actually trims, the response carries `X-Pictomancer-Trim-Left/-Top/-Width/-Height`
 headers (inspect them with your own httpx client or event hooks).
 
+## Enhance: denoise, auto-contrast, sharpen
+
+All four ops (`resize`, `compress`, `convert`, `crop`) also accept `denoise`, `equalize` and
+`sharpen`. Opt-in, base price - no surcharge.
+
+```python
+with Client(api_key="your-api-key") as client:
+    out = client.convert("https://example.com/image.jpg", "webp", denoise=2, equalize=True)
+    out = client.resize("https://example.com/image.jpg", scale=0.5, sharpen=True)
+```
+
+- `denoise` (int, 1-3) - median filter before the operation, window 3x3 to 7x7.
+- `equalize` (bool) - auto-contrast, histogram equalisation of the value channel only; hue and
+  saturation are preserved.
+- `sharpen` (bool) - unsharp-mask sharpen after the operation (libvips defaults).
+
+Applied in a fixed order: `autorot -> denoise -> equalize -> operation -> sharpen`. A `compress`
+with any of these that comes out larger is still billed, unlike a plain compress with no gain.
+
 ## Quality target (SSIM)
 
 Instead of guessing a `q` value, ask for the smallest file that still scores at
