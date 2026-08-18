@@ -1,4 +1,5 @@
 import base64
+import json
 
 import httpx
 import pytest
@@ -117,6 +118,425 @@ class TestConvertParams:
         sent = route.calls[0].request
         assert b'"format": "avif"' in sent.content or b'"format":"avif"' in sent.content
         assert b'"effort"' in sent.content
+
+
+class TestQualityTargetParams:
+    @respx.mock
+    def test_compress_sends_quality_target(self):
+        route = respx.post(f"{BASE}/v1/compress").mock(
+            return_value=httpx.Response(200, headers={"content-type": "image/webp"}, content=PNG)
+        )
+
+        with Client(api_key="k") as c:
+            c.compress("data:image/png;base64,xxx", format="webp", quality_target=0.95)
+
+        sent = json.loads(route.calls[0].request.content)
+        assert sent["quality_target"] == 0.95
+
+    @respx.mock
+    def test_convert_sends_quality_target(self):
+        route = respx.post(f"{BASE}/v1/convert").mock(
+            return_value=httpx.Response(200, headers={"content-type": "image/avif"}, content=PNG)
+        )
+
+        with Client(api_key="k") as c:
+            c.convert("data:image/png;base64,xxx", "avif", quality_target=0.9)
+
+        sent = json.loads(route.calls[0].request.content)
+        assert sent["quality_target"] == 0.9
+
+    @respx.mock
+    def test_compress_omits_quality_target_by_default(self):
+        route = respx.post(f"{BASE}/v1/compress").mock(
+            return_value=httpx.Response(200, headers={"content-type": "image/webp"}, content=PNG)
+        )
+
+        with Client(api_key="k") as c:
+            c.compress("data:image/png;base64,xxx", format="webp", q=80)
+
+        sent = json.loads(route.calls[0].request.content)
+        assert "quality_target" not in sent
+
+    @respx.mock
+    @pytest.mark.asyncio
+    async def test_async_convert_sends_quality_target(self):
+        route = respx.post(f"{BASE}/v1/convert").mock(
+            return_value=httpx.Response(200, headers={"content-type": "image/webp"}, content=PNG)
+        )
+
+        async with AsyncClient(api_key="k") as c:
+            await c.convert("data:image/png;base64,xxx", "webp", quality_target=0.95)
+
+        sent = json.loads(route.calls[0].request.content)
+        assert sent["quality_target"] == 0.95
+
+
+class TestGeometryParams:
+    @respx.mock
+    def test_crop_smart_sends_gravity_without_xy(self):
+        route = respx.post(f"{BASE}/v1/crop").mock(
+            return_value=httpx.Response(200, headers={"content-type": "image/webp"}, content=PNG)
+        )
+
+        with Client(api_key="k") as c:
+            c.crop("data:image/png;base64,xxx", gravity="attention", width=200, height=200)
+
+        sent = json.loads(route.calls[0].request.content)
+        assert sent["gravity"] == "attention"
+        assert sent["width"] == 200
+        assert sent["height"] == 200
+        assert "x" not in sent
+        assert "y" not in sent
+
+    @respx.mock
+    def test_crop_trim_sends_threshold(self):
+        route = respx.post(f"{BASE}/v1/crop").mock(
+            return_value=httpx.Response(200, headers={"content-type": "image/webp"}, content=PNG)
+        )
+
+        with Client(api_key="k") as c:
+            c.crop("data:image/png;base64,xxx", trim=True, threshold=5.0)
+
+        sent = json.loads(route.calls[0].request.content)
+        assert sent["trim"] is True
+        assert sent["threshold"] == 5.0
+        assert "width" not in sent
+        assert "gravity" not in sent
+
+    @respx.mock
+    def test_crop_manual_positional_regression(self):
+        route = respx.post(f"{BASE}/v1/crop").mock(
+            return_value=httpx.Response(200, headers={"content-type": "image/webp"}, content=PNG)
+        )
+
+        with Client(api_key="k") as c:
+            c.crop("data:image/png;base64,xxx", 0, 0, 100, 100, format="webp")
+
+        sent = json.loads(route.calls[0].request.content)
+        assert sent["x"] == 0
+        assert sent["y"] == 0
+        assert sent["width"] == 100
+        assert sent["height"] == 100
+        assert sent["format"] == "webp"
+        assert "gravity" not in sent
+        assert "trim" not in sent
+
+    @respx.mock
+    def test_crop_omits_geometry_params_by_default(self):
+        route = respx.post(f"{BASE}/v1/crop").mock(
+            return_value=httpx.Response(200, headers={"content-type": "image/webp"}, content=PNG)
+        )
+
+        with Client(api_key="k") as c:
+            c.crop("data:image/png;base64,xxx", 0, 0, 100, 100)
+
+        sent = json.loads(route.calls[0].request.content)
+        assert "gravity" not in sent
+        assert "trim" not in sent
+        assert "threshold" not in sent
+        assert "autorot" not in sent
+
+    @respx.mock
+    def test_crop_sends_autorot(self):
+        route = respx.post(f"{BASE}/v1/crop").mock(
+            return_value=httpx.Response(200, headers={"content-type": "image/webp"}, content=PNG)
+        )
+
+        with Client(api_key="k") as c:
+            c.crop("data:image/png;base64,xxx", 0, 0, 100, 100, autorot=True)
+
+        sent = json.loads(route.calls[0].request.content)
+        assert sent["autorot"] is True
+
+    @respx.mock
+    def test_resize_fill_sends_width_height_gravity(self):
+        route = respx.post(f"{BASE}/v1/resize").mock(
+            return_value=httpx.Response(200, headers={"content-type": "image/webp"}, content=PNG)
+        )
+
+        with Client(api_key="k") as c:
+            c.resize("data:image/png;base64,xxx", width=200, height=150, gravity="entropy")
+
+        sent = json.loads(route.calls[0].request.content)
+        assert sent["width"] == 200
+        assert sent["height"] == 150
+        assert sent["gravity"] == "entropy"
+        assert "scale" not in sent
+
+    @respx.mock
+    def test_resize_omits_fill_params_by_default(self):
+        route = respx.post(f"{BASE}/v1/resize").mock(
+            return_value=httpx.Response(200, headers={"content-type": "image/webp"}, content=PNG)
+        )
+
+        with Client(api_key="k") as c:
+            c.resize("data:image/png;base64,xxx", scale=0.5)
+
+        sent = json.loads(route.calls[0].request.content)
+        assert "width" not in sent
+        assert "height" not in sent
+        assert "gravity" not in sent
+        assert "autorot" not in sent
+
+    @respx.mock
+    def test_resize_sends_autorot(self):
+        route = respx.post(f"{BASE}/v1/resize").mock(
+            return_value=httpx.Response(200, headers={"content-type": "image/webp"}, content=PNG)
+        )
+
+        with Client(api_key="k") as c:
+            c.resize("data:image/png;base64,xxx", scale=0.5, autorot=True)
+
+        sent = json.loads(route.calls[0].request.content)
+        assert sent["autorot"] is True
+
+    @respx.mock
+    def test_compress_sends_autorot(self):
+        route = respx.post(f"{BASE}/v1/compress").mock(
+            return_value=httpx.Response(200, headers={"content-type": "image/webp"}, content=PNG)
+        )
+
+        with Client(api_key="k") as c:
+            c.compress("data:image/png;base64,xxx", format="webp", autorot=True)
+
+        sent = json.loads(route.calls[0].request.content)
+        assert sent["autorot"] is True
+
+    @respx.mock
+    def test_compress_omits_autorot_by_default(self):
+        route = respx.post(f"{BASE}/v1/compress").mock(
+            return_value=httpx.Response(200, headers={"content-type": "image/webp"}, content=PNG)
+        )
+
+        with Client(api_key="k") as c:
+            c.compress("data:image/png;base64,xxx", format="webp")
+
+        sent = json.loads(route.calls[0].request.content)
+        assert "autorot" not in sent
+
+    @respx.mock
+    def test_convert_sends_autorot(self):
+        route = respx.post(f"{BASE}/v1/convert").mock(
+            return_value=httpx.Response(200, headers={"content-type": "image/avif"}, content=PNG)
+        )
+
+        with Client(api_key="k") as c:
+            c.convert("data:image/png;base64,xxx", "avif", autorot=True)
+
+        sent = json.loads(route.calls[0].request.content)
+        assert sent["autorot"] is True
+
+    @respx.mock
+    def test_convert_omits_autorot_by_default(self):
+        route = respx.post(f"{BASE}/v1/convert").mock(
+            return_value=httpx.Response(200, headers={"content-type": "image/avif"}, content=PNG)
+        )
+
+        with Client(api_key="k") as c:
+            c.convert("data:image/png;base64,xxx", "avif")
+
+        sent = json.loads(route.calls[0].request.content)
+        assert "autorot" not in sent
+
+    @respx.mock
+    @pytest.mark.asyncio
+    async def test_async_crop_smart_sends_gravity_without_xy(self):
+        route = respx.post(f"{BASE}/v1/crop").mock(
+            return_value=httpx.Response(200, headers={"content-type": "image/webp"}, content=PNG)
+        )
+
+        async with AsyncClient(api_key="k") as c:
+            await c.crop("data:image/png;base64,xxx", gravity="attention", width=200, height=200)
+
+        sent = json.loads(route.calls[0].request.content)
+        assert sent["gravity"] == "attention"
+        assert "x" not in sent
+        assert "y" not in sent
+
+    @respx.mock
+    @pytest.mark.asyncio
+    async def test_async_resize_fill_sends_width_height_gravity(self):
+        route = respx.post(f"{BASE}/v1/resize").mock(
+            return_value=httpx.Response(200, headers={"content-type": "image/webp"}, content=PNG)
+        )
+
+        async with AsyncClient(api_key="k") as c:
+            await c.resize("data:image/png;base64,xxx", width=200, height=150, gravity="entropy")
+
+        sent = json.loads(route.calls[0].request.content)
+        assert sent["width"] == 200
+        assert sent["height"] == 150
+        assert sent["gravity"] == "entropy"
+        assert "scale" not in sent
+
+
+class TestEnhanceParams:
+    @respx.mock
+    def test_resize_sends_sharpen(self):
+        route = respx.post(f"{BASE}/v1/resize").mock(
+            return_value=httpx.Response(200, headers={"content-type": "image/webp"}, content=PNG)
+        )
+
+        with Client(api_key="k") as c:
+            c.resize("data:image/png;base64,xxx", scale=0.5, sharpen=True)
+
+        sent = json.loads(route.calls[0].request.content)
+        assert sent["sharpen"] is True
+
+    @respx.mock
+    def test_compress_sends_denoise(self):
+        route = respx.post(f"{BASE}/v1/compress").mock(
+            return_value=httpx.Response(200, headers={"content-type": "image/webp"}, content=PNG)
+        )
+
+        with Client(api_key="k") as c:
+            c.compress("data:image/png;base64,xxx", format="webp", denoise=2)
+
+        sent = json.loads(route.calls[0].request.content)
+        assert sent["denoise"] == 2
+
+    @respx.mock
+    def test_convert_sends_equalize(self):
+        route = respx.post(f"{BASE}/v1/convert").mock(
+            return_value=httpx.Response(200, headers={"content-type": "image/avif"}, content=PNG)
+        )
+
+        with Client(api_key="k") as c:
+            c.convert("data:image/png;base64,xxx", "avif", equalize=True)
+
+        sent = json.loads(route.calls[0].request.content)
+        assert sent["equalize"] is True
+
+    @respx.mock
+    def test_crop_sends_enhance_params(self):
+        route = respx.post(f"{BASE}/v1/crop").mock(
+            return_value=httpx.Response(200, headers={"content-type": "image/webp"}, content=PNG)
+        )
+
+        with Client(api_key="k") as c:
+            c.crop("data:image/png;base64,xxx", 0, 0, 100, 100, denoise=1, equalize=True, sharpen=True)
+
+        sent = json.loads(route.calls[0].request.content)
+        assert sent["denoise"] == 1
+        assert sent["equalize"] is True
+        assert sent["sharpen"] is True
+
+    @respx.mock
+    def test_resize_omits_enhance_params_by_default(self):
+        route = respx.post(f"{BASE}/v1/resize").mock(
+            return_value=httpx.Response(200, headers={"content-type": "image/webp"}, content=PNG)
+        )
+
+        with Client(api_key="k") as c:
+            c.resize("data:image/png;base64,xxx", scale=0.5)
+
+        sent = json.loads(route.calls[0].request.content)
+        assert "denoise" not in sent
+        assert "equalize" not in sent
+        assert "sharpen" not in sent
+
+    @respx.mock
+    def test_compress_omits_enhance_params_by_default(self):
+        route = respx.post(f"{BASE}/v1/compress").mock(
+            return_value=httpx.Response(200, headers={"content-type": "image/webp"}, content=PNG)
+        )
+
+        with Client(api_key="k") as c:
+            c.compress("data:image/png;base64,xxx", format="webp")
+
+        sent = json.loads(route.calls[0].request.content)
+        assert "denoise" not in sent
+        assert "equalize" not in sent
+        assert "sharpen" not in sent
+
+    @respx.mock
+    def test_convert_omits_enhance_params_by_default(self):
+        route = respx.post(f"{BASE}/v1/convert").mock(
+            return_value=httpx.Response(200, headers={"content-type": "image/avif"}, content=PNG)
+        )
+
+        with Client(api_key="k") as c:
+            c.convert("data:image/png;base64,xxx", "avif")
+
+        sent = json.loads(route.calls[0].request.content)
+        assert "denoise" not in sent
+        assert "equalize" not in sent
+        assert "sharpen" not in sent
+
+    @respx.mock
+    def test_crop_omits_enhance_params_by_default(self):
+        route = respx.post(f"{BASE}/v1/crop").mock(
+            return_value=httpx.Response(200, headers={"content-type": "image/webp"}, content=PNG)
+        )
+
+        with Client(api_key="k") as c:
+            c.crop("data:image/png;base64,xxx", 0, 0, 100, 100)
+
+        sent = json.loads(route.calls[0].request.content)
+        assert "denoise" not in sent
+        assert "equalize" not in sent
+        assert "sharpen" not in sent
+
+    @respx.mock
+    @pytest.mark.asyncio
+    async def test_async_convert_sends_enhance_params(self):
+        route = respx.post(f"{BASE}/v1/convert").mock(
+            return_value=httpx.Response(200, headers={"content-type": "image/avif"}, content=PNG)
+        )
+
+        async with AsyncClient(api_key="k") as c:
+            await c.convert("data:image/png;base64,xxx", "avif", denoise=1, equalize=True, sharpen=True)
+
+        sent = json.loads(route.calls[0].request.content)
+        assert sent["denoise"] == 1
+        assert sent["equalize"] is True
+        assert sent["sharpen"] is True
+
+
+class TestOptimizeGenerated:
+    @respx.mock
+    def test_sends_only_source_by_default(self):
+        route = respx.post(f"{BASE}/v1/optimize_generated").mock(
+            return_value=httpx.Response(200, headers={"content-type": "image/webp"}, content=PNG)
+        )
+
+        with Client(api_key="k") as c:
+            c.optimize_generated("data:image/png;base64,xxx")
+
+        sent = json.loads(route.calls[0].request.content)
+        assert sent == {"source": "data:image/png;base64,xxx"}
+
+    @respx.mock
+    def test_forwards_format_max_dimension_and_quality_target(self):
+        route = respx.post(f"{BASE}/v1/optimize_generated").mock(
+            return_value=httpx.Response(200, headers={"content-type": "image/avif"}, content=PNG)
+        )
+
+        with Client(api_key="k") as c:
+            c.optimize_generated(
+                "data:image/png;base64,xxx",
+                format="avif",
+                max_dimension=1600,
+                quality_target=0.95,
+            )
+
+        sent = json.loads(route.calls[0].request.content)
+        assert sent["format"] == "avif"
+        assert sent["max_dimension"] == 1600
+        assert sent["quality_target"] == 0.95
+
+    @respx.mock
+    @pytest.mark.asyncio
+    async def test_async_sends_only_source_by_default(self):
+        route = respx.post(f"{BASE}/v1/optimize_generated").mock(
+            return_value=httpx.Response(200, headers={"content-type": "image/webp"}, content=PNG)
+        )
+
+        async with AsyncClient(api_key="k") as c:
+            await c.optimize_generated("data:image/png;base64,xxx")
+
+        sent = json.loads(route.calls[0].request.content)
+        assert sent == {"source": "data:image/png;base64,xxx"}
 
 
 class TestErrorPropagation:

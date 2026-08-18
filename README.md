@@ -82,6 +82,97 @@ async def main():
 asyncio.run(main())
 ```
 
+## Geometry ops: smart crop, trim, fill, autorot
+
+`crop` has three mutually exclusive modes:
+
+```python
+with Client(api_key="your-api-key") as client:
+    # Manual: exact rectangle.
+    out = client.crop("https://example.com/image.jpg", 0, 0, 100, 100)
+
+    # Smart: gravity picks the window. One of 'attention', 'entropy', 'centre'.
+    out = client.crop("https://example.com/image.jpg", gravity="attention", width=200, height=200)
+
+    # Trim: removes a uniform background border. threshold defaults to 10.0 server-side.
+    out = client.crop("https://example.com/image.jpg", trim=True, threshold=5.0)
+```
+
+`resize` gains a fill mode: pass `width` + `height` (instead of `scale`/`scale_x`/`scale_y`) to
+resize and smart-crop to exact dimensions in one call; `gravity` defaults to `attention`.
+
+```python
+out = client.resize("https://example.com/image.jpg", width=200, height=150, gravity="entropy")
+```
+
+All four ops (`resize`, `compress`, `convert`, `crop`) accept `autorot=True` to apply EXIF
+orientation before processing.
+
+When a crop actually trims, the response carries `X-Pictomancer-Trim-Left/-Top/-Width/-Height`
+headers (inspect them with your own httpx client or event hooks).
+
+## Enhance: denoise, auto-contrast, sharpen
+
+All four ops (`resize`, `compress`, `convert`, `crop`) also accept `denoise`, `equalize` and
+`sharpen`. Opt-in, base price - no surcharge.
+
+```python
+with Client(api_key="your-api-key") as client:
+    out = client.convert("https://example.com/image.jpg", "webp", denoise=2, equalize=True)
+    out = client.resize("https://example.com/image.jpg", scale=0.5, sharpen=True)
+```
+
+- `denoise` (int, 1-3) - median filter before the operation, window 3x3 to 7x7.
+- `equalize` (bool) - auto-contrast, histogram equalisation of the value channel only; hue and
+  saturation are preserved.
+- `sharpen` (bool) - unsharp-mask sharpen after the operation (libvips defaults).
+
+Applied in a fixed order: `autorot -> denoise -> equalize -> operation -> sharpen`. A `compress`
+with any of these that comes out larger is still billed, unlike a plain compress with no gain.
+
+## Quality target (SSIM)
+
+Instead of guessing a `q` value, ask for the smallest file that still scores at
+least a given SSIM. Pass `quality_target` (float, 0 < v <= 1) to `compress` or
+`convert`; the server binary-searches the encoder quality for you.
+
+```python
+with Client(api_key="your-api-key") as client:
+    out = client.compress("https://example.com/image.jpg", format="webp", quality_target=0.95)
+    out = client.convert("https://example.com/image.jpg", "avif", quality_target=0.9)
+```
+
+Constraints (validated server-side, violations return 422):
+
+- Mutually exclusive with `q`, and with `lossless=True` on `convert`.
+- Only for `jpeg`, `webp` and `avif` outputs; `compress` requires an explicit `format`.
+- Not supported inside `pipeline` operations.
+- Carries a flat surcharge for the extra encodes.
+
+The search outcome is reported in response headers (the SDK returns the body
+only; inspect them with your own httpx client or event hooks if you need them):
+
+- `X-Pictomancer-Quality-Target` - the target you asked for.
+- `X-Pictomancer-Quality-Achieved` - SSIM of the returned encode, e.g. `0.9530`.
+- `X-Pictomancer-Quality-Q-Final` - encoder quality the search settled on.
+- `X-Pictomancer-Quality-Encodes` - encode cycles spent.
+
+Headers are absent when no search ran. `X-Pig-Billed` is `0` when the input came
+back untouched (already within target at its current size).
+
+## AI-generated images: one call to web-ready
+
+Image generators (gpt-image, DALL-E, Flux, Midjourney, Stable Diffusion) return 2-8 MB
+PNGs. optimize_generated returns the same picture as web-ready webp (default), avif,
+jpeg or png: metadata stripped, transparency kept, optional max_dimension cap (never
+upscales), optional q or quality_target. Same price as convert; a result that is not
+smaller is returned free.
+
+```python
+with Client(api_key="your-api-key") as client:
+    out = client.optimize_generated("https://example.com/gen.png", format="avif", max_dimension=1600)
+```
+
 ## Delivery: write the result somewhere else
 
 By default an operation returns the optimized `bytes`. Pass a `delivery` target to
