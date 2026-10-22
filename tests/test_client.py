@@ -539,6 +539,46 @@ class TestOptimizeGenerated:
         assert sent == {"source": "data:image/png;base64,xxx"}
 
 
+class TestRemoveBackground:
+    @respx.mock
+    def test_sends_only_source_by_default(self):
+        route = respx.post(f"{BASE}/v1/remove_background").mock(
+            return_value=httpx.Response(200, headers={"content-type": "image/png"}, content=PNG)
+        )
+
+        with Client(api_key="k") as c:
+            c.remove_background("data:image/png;base64,xxx")
+
+        sent = json.loads(route.calls[0].request.content)
+        assert sent == {"source": "data:image/png;base64,xxx"}
+
+    @respx.mock
+    def test_forwards_format_and_q(self):
+        route = respx.post(f"{BASE}/v1/remove_background").mock(
+            return_value=httpx.Response(200, headers={"content-type": "image/webp"}, content=PNG)
+        )
+
+        with Client(api_key="k") as c:
+            c.remove_background("data:image/png;base64,xxx", format="webp", q=80)
+
+        sent = json.loads(route.calls[0].request.content)
+        assert sent["format"] == "webp"
+        assert sent["q"] == 80
+
+    @respx.mock
+    @pytest.mark.asyncio
+    async def test_async_sends_only_source_by_default(self):
+        route = respx.post(f"{BASE}/v1/remove_background").mock(
+            return_value=httpx.Response(200, headers={"content-type": "image/png"}, content=PNG)
+        )
+
+        async with AsyncClient(api_key="k") as c:
+            await c.remove_background("data:image/png;base64,xxx")
+
+        sent = json.loads(route.calls[0].request.content)
+        assert sent == {"source": "data:image/png;base64,xxx"}
+
+
 class TestErrorPropagation:
     @respx.mock
     def test_4xx_raises(self):
