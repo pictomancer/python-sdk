@@ -173,6 +173,17 @@ with Client(api_key="your-api-key") as client:
     out = client.optimize_generated("https://example.com/gen.png", format="avif", max_dimension=1600)
 ```
 
+## Remove a background
+
+remove_background cuts out the subject and returns it as png (default), webp or avif;
+jpeg is not allowed. The output keeps transparency. Optional q (1-100) applies to webp
+and avif only. $0.01 base per image.
+
+```python
+with Client(api_key="your-api-key") as client:
+    out = client.remove_background("https://example.com/photo.jpg", format="webp", q=85)
+```
+
 ## Delivery: write the result somewhere else
 
 By default an operation returns the optimized `bytes`. Pass a `delivery` target to
